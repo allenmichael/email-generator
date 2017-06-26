@@ -1,0 +1,9 @@
+<% include ../partials/common/header %>
+<% if(verifyEmailMessage !== '') { %>
+    <div class="jumbotron">
+        <h1><%= verifyEmailMessage %></h1>
+        <h2>Be sure to check your spam folder for the verification email.</h2>
+        <a href="./login">Try to login again.</a>
+    </div>
+<% } %>
+<% include ../partials/common/footer %>

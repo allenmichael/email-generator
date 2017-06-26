@@ -1,0 +1,46 @@
+<% include ../partials/common/header %>
+<% include ../partials/common/logged-in-nav %>
+<div class="container">
+    <hr />
+    <div class="row">
+        <div class="col-md-offset-5 col-md-2">
+            <button class="btn btn-primary" id="selectAll">Select All</button>
+        </div>
+        <div class="col-md-2">
+            <button class="btn btn-danger" id="startOver">Start Over</button>
+        </div>
+    </div>
+    <hr />
+    <div id="copy" contenteditable=true>
+        <p>Hi <%= contactFirstName %>,</p>
+        <% if (isInsurance) { %>
+            <% include ../partials/email-text/insurance %>
+        <% } else if (isFinServ) { %>
+            <% include ../partials/email-text/finServ %>
+        <% } %>
+        <% createdImages.forEach(function(imgUrl) { %>
+            <img width="800px" src="<%= imgUrl %>" />
+        <% }) %>
+    </div>
+</div>
+<% include ../partials/common/scripts %>
+<script type="text/javascript">
+    function selectElementContents(el) {
+        var range = document.createRange();
+        range.selectNodeContents(el);
+        var sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+    }
+
+    $('#selectAll').on('click', function() {
+        var el = document.getElementById("copy");
+        selectElementContents(el);
+    })
+    $('#startOver').on('click', startOver);
+    function startOver() {
+        window.location = ("<%= startOverUrl %>");
+    }
+</script>
+
+<% include ../partials/common/footer %>

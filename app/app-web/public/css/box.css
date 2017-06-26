@@ -1,0 +1,43 @@
+.vertical-center {
+  min-height: 100%;  /* Fallback for browsers do NOT support vh unit */
+  min-height: 100vh; /* These two lines are counted as one :-)       */
+
+  display: flex;
+  align-items: center;
+}
+
+/* Front Page Styling */
+.section-title {
+  margin-top: 10px;
+  margin-bottom: 10px;
+  font-weight:bold;
+}
+
+#logoFile {
+  display: inline-block;
+}
+
+#imageUrl {
+  width: 272px;
+  margin-right:4px;
+}
+
+#companyName {
+  width: 272px;
+  margin-right: 4px;
+  margin-bottom: 5px;
+  display: block;
+}
+
+#contactName {
+  width: 272px;
+  margin-right: 4px;
+  margin-bottom: 5px;
+  display: block;
+}
+/* Canvas Styling */
+canvas {
+  width: 100%;
+  height: auto;
+  border: 2px solid black;
+}

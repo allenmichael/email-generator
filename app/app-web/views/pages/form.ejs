@@ -1,0 +1,226 @@
+<% include ../partials/common/header %>
+<% include ../partials/common/logged-in-nav %>
+  <div class="container">  
+    <div class="row">
+      <div class="section-title">Company Logo</div>
+    </div>
+    <form id="logoUploadForm">
+      <div class="row mt-2">
+        <label for="logoFile">
+          Upload a file from your local filesystem
+        </label>
+        <div class="input-group">
+          <input accept="image/*" name="logoFile" class="form-control-file" type="file" id="logoFile">
+          <span class="input-group-btn">
+            <button type="button" id="uploadLogo" class="btn btn-primary">Upload File</button>
+          </span>
+        </div>
+      </div>
+      <div class="row mt-4">
+        <label for="logoFile">
+          Or enter an image URL 
+        </label>
+        <div class="input-group">
+          <input type="url" id="imageUrl" name="imageUrl" class="form-control" placeholder="Image from url...">
+          <span class="input-group-btn">
+            <button id="loadFromUrl" class="btn btn-primary" type="button">Load Image</button>
+          </span>
+        </div>
+      </div>
+    </form>
+    <% if(isLogoSet) { %>
+      <div class="row mt-12">
+        <div class="section-title">Currently set logo:</div> 
+      </div>
+      <form>
+      <div class="form-group">
+        <img width="150px" height="100px" src="<%= logoFileUrl %>" />
+        <div class="input-group">
+          <span class="input-group-btn">
+            <button class="btn btn-primary" id="resetLogo">Clear current logo</button>
+          </span>
+        </div>
+      </div>
+    <% } %>
+    <div class="row mt-2">
+      <div class="section-title">Industry</div>
+    </div>
+    <form>
+      <fieldset class="form-group">
+        <% if (isInsurance) { %>
+        <div class="form-check">
+          <label class="form-check-label">
+            <input disabled type="radio" class="form-check-input" name="industryRadioSelect" value="<%= industryTargets.FIN_SERV %>"  />
+            Financial Services - coming soon
+          </label>
+        </div>
+        <div class="form-check">
+          <label class="form-check-label">
+            <input type="radio" class="form-check-input" name="industryRadioSelect" value="<%= industryTargets.INSURANCE %>" checked />
+            Insurance
+          </label>
+        </div>
+        <% } else { %>
+        <div class="form-check">
+          <label class="form-check-label">
+            <input disabled type="radio" class="form-check-input" name="industryRadioSelect" value="<%= industryTargets.FIN_SERV %>"/>
+            Financial Services - coming soon
+          </label>
+        </div>
+        <div class="form-check">
+          <label class="form-check-label">
+            <input type="radio" class="form-check-input" name="industryRadioSelect" value="<%= industryTargets.INSURANCE %>" checked />
+            Insurance
+          </label>
+        </div>
+        <% } %>
+      </fieldset>
+    </form>
+    <div class="row mt-2">
+      <div class="section-title">Customer Information</div>
+    </div>
+    <form>
+        <div class="form-group">
+          <% if (contactFirstName === '') { %>
+            <input id="contactFirstName" name="contactFirstName" type="text" class="form-control" placeholder="Contact first name...">
+          <% } else { %>
+            <input id="contactFirstName" name="contactFirstName" type="text" class="form-control" value="<%= contactFirstName %>">
+          <% } %>
+        </div>
+      <button id="submitTemplateValues" class="btn btn-primary" type="button">Continue to login image</button>
+    </form>
+  </div>
+  <% include ../partials/common/scripts %>
+  <script src="/js/BoxSdk.min.js"></script>
+  <script type="text/javascript">
+    (function () {
+      $(document).ready(function () {
+        var accessToken = "<%= user.accessToken %>";
+        var storageFolderId = "<%= user.storageFolderId %>";
+        var box = new BoxSdk();
+        var boxClient = new box.BasicBoxClient({accessToken: accessToken});
+        var fileSelect = document.getElementById('logoFile');
+        var logoUploadedSuccessMessage;
+
+        $('#logoUploadForm').validate({
+          rules: {
+            imageUrl: {
+              required: true,
+              url: true
+            }
+          }
+        })
+
+        $('#submitTemplateValues').click(submitTemplateValues)
+        function submitTemplateValues(event) {
+          event.preventDefault();
+          var contactName = $('#contactFirstName').val();
+          var industryTarget = $("input[name=industryRadioSelect]:checked").val()
+          $.ajax({
+              url: "<%= submitTemplateValuesUrl %>",
+              type: 'POST',
+              data: JSON.stringify({
+                      "_csrf": "<%= csrfToken %>",
+                      "contactFirstName": contactName,
+                      "industryTarget": industryTarget}),
+              contentType: "application/json; charset=utf-8",
+              dataType: "json",
+              complete: function (data) {
+                // Log the JSON response to prove this worked
+                console.log(data.responseText);
+                window.location = ("<%= createNewImageUrl %>");
+              }
+          });
+        }
+
+        $('#loadFromUrl').click(loadFromUrl)
+        function loadFromUrl(event) {
+          event.preventDefault();
+          $("#loadFromUrl").prop("disabled",true).text("Processing...");  
+          var imageUrl = $('#imageUrl').val();
+          $.ajax({
+              url: "<%= retrieveLogoImageUrl %>",
+              type: 'POST',
+              data: JSON.stringify({
+                      "_csrf": "<%= csrfToken %>",
+                      "imageUrl": imageUrl}),
+              contentType: "application/json; charset=utf-8",
+              dataType: "json",
+              complete: function (data) {
+                // Log the JSON response to prove this worked
+                $("#loadFromUrl").prop("disabled",false).text("Load Image");  
+                $('#logoUploadForm').append("<div id='logoSuccessMessage'>Set logo!</div>");
+                $('#logoSuccessMessage').delay(3000).fadeOut();
+                console.log(data.responseText);
+                window.location.reload();
+              }
+          });
+        }
+
+
+        $('#uploadLogo').click(uploadLogo);
+        function uploadLogo(event) {
+          event.preventDefault();
+          try {
+            console.log("Uploading...");
+            $("#uploadLogo").prop("disabled",true).text("Uploading...");  
+            var files = fileSelect.files;
+            var formData = new FormData();
+            var currentDate = Date.now().toString();
+            var supportedTypesRegex = /^image/;
+            if(!supportedTypesRegex.test(files[0].type)) {
+              throw new Error("Only upload image files...");
+            }
+
+            formData.append('files', files[0], "<%= user.id %>" + "-" + currentDate + '-logo.png');
+            // Add the destination folder for the upload to the form
+            formData.append('parent_id', storageFolderId);
+            boxClient.files.upload({ body: formData })
+            .then(function (file) {
+                console.log(file);
+                var fileId = file.entries[0].id;
+                return boxClient.files.createSharedLink({
+                    id: fileId,
+                    access: "open",
+                    permissions: {
+                        can_download: true
+                    }
+                });
+            })
+            .then(function(sharedLink) {
+                console.log(sharedLink);
+                $.ajax({
+                    url: "<%= saveLogoImageUrl %>",
+                    type: 'POST',
+                    data: JSON.stringify({
+                            "_csrf": "<%= csrfToken %>",
+                            "url": sharedLink.shared_link.download_url}),
+                    contentType: "application/json; charset=utf-8",
+                    dataType: "json",
+                    complete: function (data) {
+                      // Log the JSON response to prove this worked
+                      console.log(data.responseText);
+                      $("#uploadLogo").prop("disabled",false).text("Upload File");  
+                      window.location.reload();
+                    }
+                });
+            })
+            .catch(function(e) {
+              console.log(e);
+              throw e;
+            });
+          } catch(e) {
+            console.log(e);
+            $("#uploadLogo").prop("disabled",false).text("Upload File");  
+          }
+        }
+
+        $('#resetLogo').on('click', resetLogo);
+        function resetLogo(e) {
+          e.preventDefault();
+          window.location = ("<%= resetLogoUrl %>");
+        }
+      });
+    })();
+    </script>
+  <% include ../partials/common/footer %>

@@ -1,0 +1,163 @@
+<% include ../partials/common/header %>
+<% include ../partials/common/logged-in-nav %>
+    <div class="container-fluid">
+        <hr />
+        <div class="row">
+            <div class="col-md-offset-5 col-md-2">
+                <button class="btn btn-secondary" id="previewImg">Preview</button>
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-primary" id="saveImg">Save</button>
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-danger" id="startOver">Start Over</button>
+            </div>
+        </div>
+        <hr />
+        <div class="row">
+            <div class="col-md-offset-2 col-md-10">
+                <canvas id="canvas-create-image" width="1000" height="501"></canvas>
+            </div>
+        </div>
+    </div>
+    <% include ../partials/common/scripts %>
+    <script src="/js/BoxSdk.min.js"></script>
+        <script type="text/javascript">
+            (function () {
+                $(document).ready(function () {
+                    
+                    var accessToken = "<%= user.accessToken %>";
+                    var storageFolderId = "<%= user.storageFolderId %>";
+                    var box = new BoxSdk();
+                    var boxClient = new box.BasicBoxClient({accessToken: accessToken});
+
+                    $('#saveImg').on('click', saveImg);
+                    function saveImg(event) {
+                        event.preventDefault();
+                        var dataUrl = canvas.toDataURL('png');
+                        var blob = dataURItoBlob(dataUrl);
+                        var formData = new FormData();
+                        var currentDate = Date.now().toString();
+                        formData.append('files', blob, "<%= user.id %>-" + currentDate + "<%= industry %><%= currentStep %>.png");
+                        // Add the destination folder for the upload to the form
+                        formData.append('parent_id', storageFolderId);
+
+                        boxClient.files.upload({ body: formData })
+                        .then(function (file) {
+                            console.log(file);
+                            var fileId = file.entries[0].id;
+                            return boxClient.files.createSharedLink({
+                                id: fileId,
+                                access: "open",
+                                permissions: {
+                                    can_download: true
+                                }
+                            });
+                        })
+                        .then(function(sharedLink) {
+                            console.log(sharedLink);
+                            $.ajax({
+                                url: "<%= saveImageUrl %>",
+                                type: 'POST',
+                                data: JSON.stringify({
+                                        "_csrf": "<%= csrfToken %>",
+                                        "url": sharedLink.shared_link.download_url}),
+                                contentType: "application/json; charset=utf-8",
+                                dataType: "json",
+                                complete: function (data) {
+                                    // Log the JSON response to prove this worked
+                                    console.log(data.responseText);
+                                    <% if (isFinalStep) { %>
+                                        window.location = ("<%= templateUrl %>");
+                                    <% } else { %>
+                                        window.location = ("<%= createNewImageUrl %>");
+                                    <% } %>
+                                }
+                            });
+                        });
+                    }
+
+                    var canvas = new fabric.Canvas('canvas-create-image');
+                    var imageUrls = [
+                        "<%= backgroundImagePath %>",
+                    ];
+                    
+                    <% if(isLogoSet) { %>
+                        var logoFileUrl = "<%= logoFileUrl %>";
+                        var imageCurrStep = "<%= currentStep %>";
+                        var imageCurrIndustry = "<%= industry %>";
+                        var sourceImageWidth = 1400; // Change this if souce image is different width
+                        fabric.Image.fromURL(logoFileUrl, function (image) {
+                            // Resizing logo cannot be generalized, source images differ
+
+                            // Insurance step based resizing / positioning
+                            if (imageCurrIndustry == "insurance") {
+
+                                // Step resizing / positioning.
+                                var scaleRatio = (canvas.getWidth() / sourceImageWidth); 
+
+                                if (imageCurrStep == 1) {
+                                    image.scaleToHeight(scaleRatio * 58);
+                                    image.set({ left: ((((155 * scaleRatio) - image.getWidth()) / 2) + (25 * scaleRatio)), top: (scaleRatio * 10) });
+                                    canvas.add(image).renderAll();
+                                    canvas.setActiveObject(image);
+                                }
+                                else if (imageCurrStep == 2) {
+                                    image.scaleToHeight(scaleRatio * 45);
+                                    image.set({ left: ((((105 * scaleRatio) - image.getWidth()) / 2) + (115 * scaleRatio)), top: (scaleRatio * 10) });
+                                    canvas.add(image).renderAll();
+                                    canvas.setActiveObject(image);
+                                }
+                                else if (imageCurrStep == 3) {
+                                    image.scaleToHeight(scaleRatio * 40);
+                                    image.set({ left: ((((195 * scaleRatio) - image.getWidth()) / 2) + (30 * scaleRatio)), top: (scaleRatio * 10) });
+                                    canvas.add(image).renderAll();
+                                    canvas.setActiveObject(image);
+                                }
+
+                                // Generalized Code
+                                // 
+                                //      scaleToHeight (scale * max height of logo)
+                                //      left: (((( max width of logo * scale) - image.getWidth()) / 2) + (left offset of logo * scale))
+                                //      top: (scale * top offset of logo)
+                                // 
+                                // GL;HF
+                            }
+                        });
+                    <% } %>
+                    imageUrls.forEach((imageUrl) => {
+                        fabric.Image.fromURL(imageUrl, function (image) {
+                            image.scaleToWidth(canvas.getWidth());
+                            image.lockMovementX = true;
+                            image.lockMovementY = true;
+                            image.lockScalingX = true;
+                            image.lockScalingY = true;
+                            image.selectable = false;
+                            canvas.centerObject(image);
+                            canvas.sendToBack(image);
+                            canvas.renderAll();
+                        });
+                    });
+
+                    function dataURItoBlob(dataURI) {
+                        var binary = atob(dataURI.split(',')[1]);
+                        var array = [];
+                        for (var i = 0; i < binary.length; i++) {
+                            array.push(binary.charCodeAt(i));
+                        }
+                        return new Blob([new Uint8Array(array)], { type: 'image/png' });
+                    }
+
+                    $('#previewImg').on('click', previewImg);
+                    function previewImg() {
+                        window.open(canvas.toDataURL('png'));
+                    }
+
+                    $('#startOver').on('click', startOver);
+                    function startOver() {
+                        window.location = ("<%= startOverUrl %>");
+                    }
+                });
+            })();
+        </script>
+        <% include ../partials/common/footer %>

@@ -1,0 +1,13 @@
+version: '2'
+services:
+  redis:
+      image: redis:latest
+      command: redis-server --requirepass securepassword
+      ports:
+        - "6379:6379"
+  # web:
+  #   build: .
+  #   ports:
+  #     - "3000:3000"
+  #   links:
+  #     - "redis"
